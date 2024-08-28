@@ -1,0 +1,2 @@
+ROOT_DIR=$PWD
+export ROOT_DIR=$ROOT_DIR

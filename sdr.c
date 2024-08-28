@@ -35,6 +35,9 @@
 #ifdef ENABLE_PLUTOSDR
 #include "sdr_plutosdr.h"
 #endif
+#ifdef ENABLE_USRPSDR
+#include "sdr_usrp.hpp"
+#endif
 
 #include "sdr_beast.h"
 
@@ -89,6 +92,12 @@ static sdr_handler sdr_handlers[] = {
     { plutosdrInitConfig, plutosdrHandleOption, plutosdrOpen, plutosdrRun, plutosdrClose, "plutosdr", SDR_PLUTOSDR, 0},
 #endif
 
+#ifdef ENABLE_USRPSDR
+    { usrpInitConfig, usrpHandleOption, usrpOpen, usrpRun, usrpClose, "usrpsdr", SDR_USRPSDR, 0},
+#endif
+
+
+
     { beastInitConfig, beastHandleOption, beastOpen, noRun, noClose, "modesbeast", SDR_MODESBEAST, 0},
     { beastInitConfig, beastHandleOption, beastOpen, noRun, noClose, "gnshulc", SDR_GNS, 0},
     { ifileInitConfig, ifileHandleOption, ifileOpen, ifileRun, ifileClose, "ifile", SDR_IFILE, 0},
@@ -100,7 +109,7 @@ static sdr_handler sdr_handlers[] = {
 void sdrInitConfig() {
     // Default SDR is the first type available in the handlers array.
     Modes.sdr_type = sdr_handlers[0].sdr_type;
-
+    // >>>> Why initialize other SDRs, do we need to?
     for (int i = 0; sdr_handlers[i].name; ++i) {
         sdr_handlers[i].initConfig();
     }

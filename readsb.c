@@ -79,6 +79,11 @@ const char doc[] = "readsb Mode-S/ADSB/TIS Receiver   "
 #ifdef ENABLE_PLUTOSDR
         "ENABLE_PLUTOSDR "
 #endif
+
+#ifdef ENABLE_USRP
+        "ENABLE_USRPSDR "
+#endif
+
 #ifdef SC16Q11_TABLE_BITS
 #define stringize(x) _stringize(x)
         "SC16Q11_TABLE_BITS=" stringize(SC16Q11_TABLE_BITS)
@@ -734,6 +739,7 @@ int main(int argc, char **argv) {
     int j;
 
     // Set sane defaults
+    // Initialize the sdr
     modesInitConfig();
 
     Modes.startup_time = mstime();
@@ -766,6 +772,7 @@ int main(int argc, char **argv) {
     if (!sdrOpen()) {
         cleanup_and_exit(1);
     }
+
 
     if (Modes.net) {
         modesInitNet();
@@ -815,6 +822,7 @@ int main(int argc, char **argv) {
         int watchdogCounter = 10; // about 1 second
 
         // Create the thread that will read the data from the device.
+        // readerThreadEntryPoint calls sdrRun().
         pthread_create(&Modes.reader_thread, NULL, readerThreadEntryPoint, NULL);
 
         while (!Modes.exit) {

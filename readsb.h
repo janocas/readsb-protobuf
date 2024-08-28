@@ -70,7 +70,15 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <stdint.h>
+
+#ifndef __cplusplus
 #include <stdatomic.h>
+#else
+#include <atomic>
+#define _Atomic(X) std::atomic< X >
+#define atomic_int std::atomic<int>
+#endif
+
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
@@ -233,7 +241,15 @@ typedef enum {
 //======================== structure declarations =========================
 
 typedef enum {
-    SDR_NONE = 0, SDR_IFILE, SDR_RTLSDR, SDR_BLADERF, SDR_MICROBLADERF, SDR_MODESBEAST, SDR_PLUTOSDR, SDR_GNS
+    SDR_NONE = 0, 
+    SDR_IFILE, 
+    SDR_RTLSDR, 
+    SDR_BLADERF, 
+    SDR_MICROBLADERF, 
+    SDR_MODESBEAST, 
+    SDR_PLUTOSDR, 
+    SDR_GNS, 
+    SDR_USRPSDR
 } sdr_type_t;
 
 // Program global state

@@ -4,66 +4,96 @@ READSB_VERSION='v4.0.4'
 RTLSDR ?= no
 BLADERF ?= no
 PLUTOSDR ?= no
+USRPSDR ?= no
 AGGRESSIVE ?= no
+
+
+CC ?= gcc
+CXX ?= g++
+
+
 HAVE_BIASTEE ?= no
+
+INCLUDES = -I/home/user/projects/readbs/workspace/shared/protobuf_c/include
+
 
 CPPFLAGS += -DMODES_READSB_VERSION=\"$(READSB_VERSION)\" -DMODES_READSB_VARIANT=\"Mictronics\" -D_GNU_SOURCE
 
 DIALECT = -std=c11
-CFLAGS += $(DIALECT) -O2 -g -W -D_DEFAULT_SOURCE -Wall -Werror -fno-common -Wmissing-declarations
-LIBS = -pthread -lpthread -lm -lrt -lncurses -lprotobuf-c -lrrd
-LDFLAGS = 
+#CFLAGS += $(DIALECT) -O2 -g -W -D_DEFAULT_SOURCE -Wall -Werror -fno-common -Wmissing-declarations $(INCLUDES)
+CFLAGS += $(DIALECT) -O2 -g -W -D_DEFAULT_SOURCE -Wall -fno-common $(INCLUDES)
+LIBS = -pthread -lpthread -lm -lrt -lncurses -lprotobuf-c -lrrd 
+LIBS += -Wl,-rpath=/home/user/projects/readbs/workspace/shared/protobuf_c/lib
+LDFLAGS = -L/home/user/projects/readbs/workspace/shared/protobuf_c/lib
 
 LIBS += $(shell pkg-config --libs tinfo)
+#LIBS+= -lstdc++
+
+
+CPPINCLUDES = -I/home/user/projects/readbs/workspace/shared/protobuf_c/include -I/opt/uhd_4.6/include 
+
+#CXXFLAGS += -std=c++14 -O2 -g -W -Wall -Werror -fno-common -Wmissing-declarations  $(CPPINCLUDES)
+CXXFLAGS += -std=c++14 -O2 -g -W -Wall -fno-common  $(CPPINCLUDES)
+
+
+
 
 # Work around to build with librrd-dev v1.7.2 or v1.8.0+
 # librrd-dev doesn't expose its version to the pre-processor.
 ifeq ($(shell awk -v a="$(shell pkg-config --modversion librrd | cut -c1-3)" -v b="1.8" 'BEGIN{print(a<b)}'), 1)
-  CPPFLAGS += -DLIBRRD_VERSION_1_7
+	CPPFLAGS += -DLIBRRD_VERSION_1_7
 endif
 
 ifeq ($(AGGRESSIVE), yes)
-  CPPFLAGS += -DALLOW_AGGRESSIVE
+	CPPFLAGS += -DALLOW_AGGRESSIVE
 endif
 
 ifeq ($(RTLSDR), yes)
-  SDR_OBJ += sdr_rtlsdr.o
-  CPPFLAGS += -DENABLE_RTLSDR
+	SDR_OBJ += sdr_rtlsdr.o
+	CPPFLAGS += -DENABLE_RTLSDR
 
-  ifeq ($(HAVE_BIASTEE), yes)
-    CPPFLAGS += -DENABLE_RTLSDR_BIASTEE
-  endif
+	ifeq ($(HAVE_BIASTEE), yes)
+		CPPFLAGS += -DENABLE_RTLSDR_BIASTEE
+	endif
 
-  ifdef RTLSDR_PREFIX
-    CPPFLAGS += -I$(RTLSDR_PREFIX)/include
-    LDFLAGS += -L$(RTLSDR_PREFIX)/lib
-  else
-    CFLAGS += $(shell pkg-config --cflags librtlsdr)
-    LDFLAGS += $(shell pkg-config --libs-only-L librtlsdr)
-  endif
+	ifdef RTLSDR_PREFIX
+		CPPFLAGS += -I$(RTLSDR_PREFIX)/include
+		LDFLAGS += -L$(RTLSDR_PREFIX)/lib
+	else
+		CFLAGS += $(shell pkg-config --cflags librtlsdr)
+		LDFLAGS += $(shell pkg-config --libs-only-L librtlsdr)
+	endif
 
-  ifeq ($(STATIC), yes)
-    LIBS_SDR += -Wl,-Bstatic -lrtlsdr -Wl,-Bdynamic -lusb-1.0
-  else
-    LIBS_SDR += -lrtlsdr -lusb-1.0
-  endif
+	ifeq ($(STATIC), yes)
+		LIBS_SDR += -Wl,-Bstatic -lrtlsdr -Wl,-Bdynamic -lusb-1.0
+	else
+		LIBS_SDR += -lrtlsdr -lusb-1.0
+	endif
 endif
 
 ifeq ($(BLADERF), yes)
-  SDR_OBJ += sdr_bladerf.o sdr_ubladerf.o
-  CPPFLAGS += -DENABLE_BLADERF
-  CFLAGS += $(shell pkg-config --cflags libbladeRF)
-  LIBS_SDR += $(shell pkg-config --libs libbladeRF)
+	SDR_OBJ += sdr_bladerf.o sdr_ubladerf.o
+	CPPFLAGS += -DENABLE_BLADERF
+	CFLAGS += $(shell pkg-config --cflags libbladeRF)
+	LIBS_SDR += $(shell pkg-config --libs libbladeRF)
 endif
 
 ifeq ($(PLUTOSDR), yes)
-    SDR_OBJ += sdr_plutosdr.o
-    CPPFLAGS += -DENABLE_PLUTOSDR
-    CFLAGS += $(shell pkg-config --cflags libiio libad9361)
-    LIBS_SDR += $(shell pkg-config --libs libiio libad9361)
+		SDR_OBJ += sdr_plutosdr.o
+		CPPFLAGS += -DENABLE_PLUTOSDR
+		CFLAGS += $(shell pkg-config --cflags libiio libad9361)
+		LIBS_SDR += $(shell pkg-config --libs libiio libad9361)
 endif
 
-all: protoc readsb readsbrrd viewadsb
+ifeq ($(USRPSDR), yes)
+		SDR_OBJ += sdr_usrp.o
+		CPPFLAGS += -DENABLE_USRPSDR
+		LIBS_SDR += -luhd
+		LDFLAGS += -L/opt/uhd_4.6/lib
+endif
+
+#all: protoc readsb readsbrrd viewadsb
+all: protoc readsb
 
 protoc: readsb.proto
 	rm -f readsb.pb-c.c readsb.pb-c.h
@@ -72,15 +102,22 @@ protoc: readsb.proto
 protoc-clean:
 	rm -f readsb.pb-c.c readsb.pb-c.h
 
-%.o: %.c *.h
+%.o: %.c *.h 
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+
+sdr_usrp.o: sdr_usrp.cpp sdr_usrp.hpp
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+
 
 readsb.pb-c.o: readsb.proto
 	protoc-c --c_out=. $<
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c readsb.pb-c.c -o $@
 
-readsb: readsb.pb-c.o geomag.o readsb.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o net_io.o crc.o demod_2400.o stats.o cpr.o icao_filter.o track.o util.o convert.o fifo.o sdr_ifile.o sdr_beast.o sdr.o ais_charset.o $(SDR_OBJ) $(COMPAT)
-	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS) $(LIBS_SDR) 
+readsb: readsb.pb-c.o geomag.o readsb.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o net_io.o crc.o demod_2400.o stats.o cpr.o icao_filter.o track.o util.o convert.o fifo.o sdr_ifile.o sdr_beast.o $(SDR_OBJ) sdr.o ais_charset.o  $(COMPAT)
+	$(CXX) -g -o $@ $^ $(LDFLAGS) $(LIBS) $(LIBS_SDR) 
+
+
 
 viewadsb: readsb.pb-c.o geomag.o viewadsb.o anet.o interactive.o mode_ac.o mode_s.o comm_b.o net_io.o crc.o stats.o cpr.o icao_filter.o track.o util.o ais_charset.o $(COMPAT)
 	$(CC) -g -o $@ $^ $(LDFLAGS) $(LIBS)

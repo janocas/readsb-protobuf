@@ -11,3 +11,5 @@ oneoff/decode_comm_b
 /readsbrrd
 /viewadsb
 /cprtests
+/logs
+/shared

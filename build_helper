@@ -1,0 +1,46 @@
+set_env_vars(){
+    fullpath=$PWD
+    readsb_path=${fullpath}
+    export READSB_DIR=$readsb_path
+    echo "The GNB directory root is:  $READSB_DIR"
+}
+
+
+install_protobuf_from_source(){
+    protobuf_install_log=$ROOT_DIR/logs/protobuf_c_install_log.txt
+    echo "Installing Google Protobuf from sources. The log file for Protobuf installation is here: $protobuf_install_log "
+    (
+        cd /tmp
+        echo "Downloading protobuf..."
+        rm -rf /tmp/protobuf-cpp-3.3.0.tar.gz* /tmp/protobuf-3.3.0
+        wget --tries=3 --retry-connrefused https://github.com/protocolbuffers/protobuf/releases/download/v3.3.0/protobuf-cpp-3.3.0.tar.gz --no-check-certificate
+        tar -xzvf protobuf-cpp-3.3.0.tar.gz --owner $(id -u) --group $(id -g) --no-same-owner
+        cd protobuf-3.3.0
+        ./configure --prefix=$proto_path/
+        echo "Compiling protobuf!..."
+        make -j`nproc`
+        $SUDO make install
+        $SUDO ldconfig
+    ) >& $protobuf_install_log
+}
+
+
+install_protobuf_c_from_source(){
+    protobuf_c_install_log=$ROOT_DIR/logs/protobuf_c_install_log.txt
+    echo "Installing Google Protobuf_C from sources. The log file for Protobuf_C installation is here: $protobuf_c_install_log "
+    (
+        export PKG_CONFIG_PATH=$proto_path/lib/pkgconfig
+        cd /tmp
+        echo "Downloading protobuf-c!..."
+        rm -rf /tmp/protobuf-c
+        git clone https://github.com/protobuf-c/protobuf-c.git
+        cd protobuf-c
+        git checkout d0531beaad3238461b7afb00e8715fe9815ff235
+        ./autogen.sh
+        ./configure --prefix=$proto_c_path/
+        echo "Compiling protobuf-c!..."
+        make -j`nproc`
+        $SUDO make install
+        $SUDO ldconfig
+    ) >& $protobuf_c_install_log
+}
